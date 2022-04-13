@@ -8,6 +8,7 @@
   <properties>
     <compiler-plugin.version>3.8.1</compiler-plugin.version>
     <failsafe.useModulePath>false</failsafe.useModulePath>
+    <mapstruct.version>1.5.0.RC1</mapstruct.version>
     <maven.compiler.release>11</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -45,6 +46,11 @@
       <artifactId>quarkus-arc</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${mapstruct.version}</version>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
@@ -73,7 +79,16 @@
         <configuration>
           <compilerArgs>
             <arg>-parameters</arg>
+            <arg>-Amapstruct.suppressGeneratorTimestamp=true</arg>
+            <arg>-Amapstruct.suppressGeneratorVersionInfoComment=true</arg>
           </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${mapstruct.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>
