@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.8/dist/semantic.min.css" rel="stylesheet" type="text/css">
+    <link href="./app.css" rel="stylesheet" type="text/css">
+    <title>ACME Products</title>
+</head>
+
+<body>
+
+<div id="app">
+    <div class="ui inverted vertical center aligned segment masthead">
+        <div class="ui container">
+            <h1 class="ui inverted header">
+                <i class="shopping cart icon"></i>
+                ACME Products
+            </h1>
+        </div>
+    </div>
+    <div class="ui vertical stripe segment">
+        <div class="ui container">
+            <div class="ui stackable grid">
+                <div class="four wide column">
+                    <div class="ui vertical fluid menu">
+                        <div class="item">
+                            <div class="ui transparent icon input">
+                                <input v-model="debouncingSearchInputText" type="text" placeholder="Search products...">
+                                <i class="search icon"></i>
+                            </div>
+                        </div>
+                        <div class="item">
+                            <div class="ui input">
+                                <select v-model="emptyAsNullSearchInputDepartment" class="ui fluid selection dropdown department"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ten wide column">
+                    <div v-if="search.result">
+                        <h2>
+                            <span v-if="search.result.totalHitCount == 1">
+                                {{ search.result.totalHitCount }} matching product
+                            </span>
+                            <span v-else>
+                                {{ search.result.totalHitCount }} matching products
+                            </span>
+                            <button class="ui right floated small basic icon button"
+                                    @click="showProductModal(null)">
+                                <i class="plus icon"></i>
+                            </button>
+                        </h2>
+                        <div>
+                            <div v-for="product in search.result.hits" class="ui raised segment">
+                                <div class="ui primary ribbon label">
+                                    <i class="icon" :class="constants.department[product.department].icon"></i>
+                                    {{ constants.department[product.department].label }}
+                                </div>
+                                <h3 class="ui header"  style="display: inline;">
+                                    {{product.name}}
+                                    <span class="ui mini right floated basic icon buttons">
+                                        <button class="ui button" @click="showProductModal(product.id)">
+                                            <i class="pen icon"></i>
+                                        </button>
+                                        <button class="ui button" @click="deleteProduct(product.id)">
+                                            <i class="trash alternate icon"></i>
+                                        </button>
+                                    </span>
+                                </h3>
+                                <p></p>
+                                <p>{{product.description}}</p>
+                                <div class="ui  labels">
+                                    <span v-for="variant in product.variants" class="ui primary basic tag label">
+                                      {{variant.name}}
+                                      <span class="detail">${{variant.price}}</span>
+                                      <a class="detail" @click="showVariantModal(product.id, variant.id)">
+                                          <i class="fitted grey pen icon"></i>
+                                      </a>
+                                      <a class="detail" @click="deleteVariant(variant.id)">
+                                          <i class="fitted grey trash alternate icon"></i>
+                                      </a>
+                                    </span>
+                                    <button class="ui basic mini icon button" @click="showVariantModal(product.id, null)">
+                                        <i class="plus icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="ui blurring placeholder">
+                        <div v-if="search.error" class="ui negative message">
+                            <div class="header">
+                                Error executing search
+                            </div>
+                            <p>{{search.error}}</p>
+                        </div>
+                        <div v-else class="ui active inverted dimmer">
+                            <div class="ui text loader">Loading</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="productModal" class="ui modal">
+        <div v-if="modals.product.id" class="header">Edit Product</div>
+        <div v-else class="header">Add Product</div>
+        <div class="content">
+            <div class="ui form">
+                <div class="field">
+                    <label>Name</label>
+                    <input required v-model="modals.product.model.name" type="text" name="name" placeholder="Name">
+                </div>
+                <div class="field">
+                    <label>Description</label>
+                    <textarea required v-model="modals.product.model.description" rows="2" name="description" placeholder="Description"></textarea>
+                </div>
+                <div class="field">
+                    <label>Department</label>
+                    <select v-model="modals.product.model.department" class="ui fluid selection dropdown department" name="department"></select>
+                </div>
+                <div class="ui error message">
+                </div>
+            </div>
+        </div>
+        <div class="actions">
+            <div class="ui cancel button">Cancel</div>
+            <div class="ui primary button" @click="submitProduct()">Submit</div>
+        </div>
+    </div>
+
+    <div id="variantModal" class="ui modal">
+        <div v-if="modals.variant.id" class="header">Edit Variant</div>
+        <div v-else class="header">Add Variant</div>
+        <div class="content">
+            <div class="ui form">
+                <div class="field">
+                    <label>Name</label>
+                    <input required v-model="modals.variant.model.name" type="text" name="name" placeholder="Name">
+                </div>
+                <div class="field">
+                    <label>Price</label>
+                    <div class="ui labeled input">
+                        <div class="ui label">$</div>
+                        <input required v-model="modals.variant.model.price" type="text" name="price" placeholder="Price">
+                    </div>
+                </div>
+                <div class="ui error message">
+                </div>
+            </div>
+        </div>
+        <div class="actions">
+            <div class="ui cancel button">Cancel</div>
+            <div class="ui primary button" @click="submitVariant()">Submit</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.8/dist/semantic.js"></script>
+<script src="https://unpkg.com/vue@3"></script>
+<script type="module">
+    import App from './app.js'
+
+    const app = Vue.createApp(App)
+    app.mount('#app')
+    app.config.errorHandler = (err, instance, info) => {
+        console.log(err)
+        $('body')
+            .toast({
+                class: 'error',
+                title: 'Unexpected error',
+                message: err
+            })
+    }
+</script>
+
+</body>
+</html>

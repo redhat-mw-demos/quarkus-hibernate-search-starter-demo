@@ -1,0 +1,9 @@
+.masthead h1.ui.header {
+    margin: 2em 0em;
+    font-size: 2em;
+    font-weight: normal;
+}
+
+.ui.vertical.stripe {
+  padding: 3em 0em;
+}
