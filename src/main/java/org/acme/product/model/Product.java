@@ -1,6 +1,7 @@
 package org.acme.product.model;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import org.hibernate.search.engine.backend.types.Aggregable;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
@@ -26,7 +27,7 @@ public class Product extends PanacheEntity {
     @FullTextField
     public String description;
     @Enumerated(EnumType.STRING)
-    @KeywordField
+    @KeywordField(aggregable = Aggregable.YES)
     public ProductDepartment department;
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderColumn

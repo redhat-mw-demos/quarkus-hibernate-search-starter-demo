@@ -32,8 +32,27 @@
                             </div>
                         </div>
                         <div class="item">
-                            <div class="ui input">
-                                <select v-model="emptyAsNullSearchInputDepartment" class="ui fluid selection dropdown department"></select>
+                            Department
+                            <div class="menu">
+                                <a v-for="(department, key) in constants.department" class="item"
+                                   @click="search.input.department==key ? search.input.department=null : search.input.department=key"
+                                   :class="search.input.department==key ? 'active primary' : ''">
+                                    {{ department.label }}
+                                    <div v-if="search.result && search.result.countByDepartment[key]" class="ui label"
+                                         :class="search.input.department==key ? 'primary left pointing' : ''">{{ search.result.countByDepartment[key] || 0 }}</div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="item">
+                            Price
+                            <div class="menu">
+                                <a v-for="(priceRange, key) in constants.priceRange" class="item"
+                                   @click="search.input.priceRange==key ? search.input.priceRange=null : search.input.priceRange=key"
+                                   :class="search.input.priceRange==key ? 'active primary' : ''">
+                                    {{ priceRange.label }}
+                                    <div v-if="search.result && search.result.countByPriceRange[key]" class="ui label"
+                                         :class="search.input.priceRange==key ? 'primary left pointing' : ''">{{ search.result.countByPriceRange[key] || 0 }}</div>
+                                </a>
                             </div>
                         </div>
                     </div>

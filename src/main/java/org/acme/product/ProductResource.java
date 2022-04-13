@@ -17,6 +17,7 @@ import javax.ws.rs.core.MediaType;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.configuration.ProfileManager;
 import io.smallrye.common.annotation.Blocking;
+import org.acme.product.dto.PriceRangeDto;
 import org.acme.product.dto.ProductInputDto;
 import org.acme.product.dto.ProductMapper;
 import org.acme.product.dto.ProductOutputDto;
@@ -25,12 +26,18 @@ import org.acme.product.dto.ProductVariantOutputDto;
 import org.acme.product.dto.SearchInputDto;
 import org.acme.product.dto.SearchOutputDto;
 import org.acme.product.model.Product;
+import org.acme.product.model.ProductDepartment;
 import org.acme.product.model.ProductVariant;
+import org.hibernate.search.engine.search.aggregation.AggregationKey;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.engine.search.query.SearchResult;
 import org.hibernate.search.mapper.orm.mapping.SearchMapping;
 import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.hibernate.search.util.common.data.Range;
 
+import java.math.BigDecimal;
+import java.util.EnumSet;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Path("/product")
@@ -99,6 +106,10 @@ public class ProductResource {
     @POST
     @Path("/search")
     public SearchOutputDto<ProductOutputDto> search(SearchInputDto input) {
+        AggregationKey<Map<ProductDepartment, Long>> countByDepartment =
+                AggregationKey.of("count-by-department");
+        AggregationKey<Map<Range<BigDecimal>, Long>> countByPriceRange =
+                AggregationKey.of("count-by-price-range");
         SearchResult<Product> result = searchSession.search(Product.class)
                 .where(f -> f.bool(b -> {
                     b.must(f.matchAll()); // Match all by default
@@ -112,12 +123,27 @@ public class ProductResource {
                         b.must(f.match().field("department")
                                 .matching(mapper.fromDto(input.department)));
                     }
+                    if (input.priceRange != null) {
+                        b.must(f.range().field("variants.price")
+                                .range(input.priceRange.value));
+                    }
                 }))
                 .sort(f -> f.field("name_keyword"))
+                .aggregation(countByDepartment, f -> f.terms()
+                        .field("department", ProductDepartment.class)
+                        .orderByTermAscending()
+                        .minDocumentCount(0))
+                .aggregation(countByPriceRange, f -> f.range()
+                        .field("variants.price", BigDecimal.class)
+                        .ranges(EnumSet.allOf(PriceRangeDto.class)
+                                .stream().map(r -> r.value)
+                                .collect(Collectors.toList())))
                 .fetch(input.page * SEARCH_PAGE_SIZE, SEARCH_PAGE_SIZE);
         return new SearchOutputDto<>(
                 result.hits().stream().map(mapper::toDto).collect(Collectors.toList()),
-                result.total().hitCount()
+                result.total().hitCount(),
+                mapper.toDepartmentAggregationDto(result.aggregation(countByDepartment)),
+                mapper.toPriceRangeAggregationDto(result.aggregation(countByPriceRange))
         );
     }
 

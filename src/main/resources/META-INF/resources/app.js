@@ -23,6 +23,14 @@ export default {
                     'HOME': {label: 'Home', icon: 'home'},
                     'SPORTS': {label: 'Sports', icon: 'biking'},
                     'TOOLS': {label: 'Tools', icon: 'tools'}
+                },
+                priceRange: {
+                  '_0_5': {label: 'Under $5'},
+                  '_5_10': {label: '$5 to $10'},
+                  '_10_20': {label: '$10 to $20'},
+                  '_20_50': {label: '$20 to $50'},
+                  '_50_100': {label: '$50 to $100'},
+                  '_100_PLUS': {label: 'Over $100'}
                 }
             }
         }
@@ -48,17 +56,6 @@ export default {
                 this.timeout = setTimeout(() => {
                     this.search.input.text = val
                 }, 300)
-            }
-        },
-        emptyAsNullSearchInputDepartment: {
-            get() {
-                return this.search.input.department
-            },
-            set(val) {
-                if (val == '') {
-                    val = null
-                }
-                this.search.input.department = val
             }
         }
     },
