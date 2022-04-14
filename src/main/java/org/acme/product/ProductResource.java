@@ -1,5 +1,6 @@
 package org.acme.product;
 
+import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.Consumes;
@@ -13,8 +14,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import io.quarkus.hibernate.orm.panache.PanacheQuery;
-import io.quarkus.panache.common.Sort;
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.runtime.configuration.ProfileManager;
 import io.smallrye.common.annotation.Blocking;
 import org.acme.product.dto.ProductInputDto;
 import org.acme.product.dto.ProductMapper;
@@ -25,10 +26,11 @@ import org.acme.product.dto.SearchInputDto;
 import org.acme.product.dto.SearchOutputDto;
 import org.acme.product.model.Product;
 import org.acme.product.model.ProductVariant;
+import org.hibernate.search.engine.search.common.BooleanOperator;
+import org.hibernate.search.engine.search.query.SearchResult;
+import org.hibernate.search.mapper.orm.mapping.SearchMapping;
+import org.hibernate.search.mapper.orm.session.SearchSession;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Path("/product")
@@ -42,6 +44,22 @@ public class ProductResource {
 
     @Inject
     ProductMapper mapper;
+
+    @Inject
+    SearchMapping searchMapping;
+
+    @Inject
+    SearchSession searchSession;
+
+    @Transactional(Transactional.TxType.NEVER)
+    void reindexOnStart(@Observes StartupEvent event) throws InterruptedException {
+        if ("dev".equals(ProfileManager.getActiveProfile())) {
+            searchMapping
+                    .scope(Product.class)
+                    .massIndexer()
+                    .startAndWait();
+        }
+    }
 
     @POST
     @Path("/")
@@ -81,44 +99,25 @@ public class ProductResource {
     @POST
     @Path("/search")
     public SearchOutputDto<ProductOutputDto> search(SearchInputDto input) {
-        StringBuilder where = new StringBuilder();
-        Map<String, Object> parameters = new HashMap<>();
-        if (input.text != null && !input.text.isBlank()) {
-            if (where.length() == 0) {
-                where.append(" where ");
-            }
-            where.append("(");
-            String[] words = input.text.split("\\s+");
-            for (int i = 0; i < words.length; i++) {
-                String paramName = "text" + i;
-                if (i > 0) {
-                    where.append(" and ");
-                }
-                where.append(String.format(
-                        "(lower(p.name) like :%1$s or lower(p.description) like :%1$s or lower(v.name) like :%1$s)",
-                        paramName));
-                parameters.put(paramName, "%" + words[i].trim().toLowerCase(Locale.ROOT) + "%");
-            }
-            where.append(")");
-        }
-        if (input.department != null) {
-            if (where.length() == 0) {
-                where.append(" where ");
-            } else {
-                where.append(" and ");
-            }
-            where.append("department = :department");
-            parameters.put("department", mapper.fromDto(input.department).name());
-        }
-        PanacheQuery<Product> query = Product.find(
-                        "select distinct p from Product p left join p.variants v" + where,
-                        Sort.by("p.name"),
-                        parameters
-                )
-                .page(input.page, SEARCH_PAGE_SIZE);
+        SearchResult<Product> result = searchSession.search(Product.class)
+                .where(f -> f.bool(b -> {
+                    b.must(f.matchAll()); // Match all by default
+                    if (input.text != null && !input.text.isBlank()) {
+                        b.must(f.simpleQueryString()
+                                .fields("name", "description", "variants.name")
+                                .matching(input.text)
+                                .defaultOperator(BooleanOperator.AND));
+                    }
+                    if (input.department != null) {
+                        b.must(f.match().field("department")
+                                .matching(mapper.fromDto(input.department)));
+                    }
+                }))
+                .sort(f -> f.field("name_keyword"))
+                .fetch(input.page * SEARCH_PAGE_SIZE, SEARCH_PAGE_SIZE);
         return new SearchOutputDto<>(
-                query.list().stream().map(mapper::toDto).collect(Collectors.toList()),
-                query.count()
+                result.hits().stream().map(mapper::toDto).collect(Collectors.toList()),
+                result.total().hitCount()
         );
     }
 
