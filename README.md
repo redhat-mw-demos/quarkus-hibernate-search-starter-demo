@@ -1,8 +1,32 @@
 # quarkus-hibernate-search-starter-demo Project
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This project uses Quarkus, Hibernate Search and Elasticsearch to showcase a web application with full-text search features.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
+
+## Before running the application
+
+The application needs Elasticsearch to be available on localhost:9200.
+With Docker, you can start Elasticsearch this way:
+
+```shell script
+docker run --rm -ti --ulimit memlock=-1:-1 --memory-swappiness=0 \
+    --name acme_elasticsearch -e xpack.security.enabled=false -e discovery.type=single-node \
+    -e "ES_JAVA_OPTS=-Xms1g -Xmx1g" -p 9200:9200 elastic/elasticsearch:7.16.3
+```
+
+In development mode, Quarkus will automatically start a PostgreSQL instance thanks to
+[Dev Services](https://quarkus.io/guides/dev-services#databases).
+
+If you want to run the application in production mode, you will need to make PostgreSQL
+available on localhost:5432.
+With Docker, you can start PostgreSQL this way:
+
+```shell script
+docker run -ti --rm --ulimit memlock=-1:-1 --memory-swappiness=0 \
+    --name acme_postgresql -e POSTGRES_USER=acme -e POSTGRES_PASSWORD=acme \
+    -e POSTGRES_DB=acme_db -p 5432:5432 postgres:13.1
+```
 
 ## Running the application in dev mode
 
@@ -49,4 +73,5 @@ If you want to learn more about building native executables, please consult http
 
 ## Related Guides
 
+- Hibernate Search ([guide](https://quarkus.io/guides/hibernate-search-orm-elasticsearch), [reference documentation](https://docs.jboss.org/hibernate/search/6.1/reference/en-US/html_single/)): Automatically index your Hibernate entities in Elasticsearch
 - Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplify your persistence code for Hibernate ORM via the active record or the repository pattern
